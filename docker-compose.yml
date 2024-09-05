@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+    nginx:
+        build:
+            context: .
+            dockerfile: ./docker/nginx.Dockerfile
+        depends_on:
+            - php
+            - mysql
+            - mssql
+        container_name: sismobilidade_nginx
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - ./src:/var/www/html:cached  # Melhorar performance com :cached
+
+    php:
+        build:
+            context: .
+            dockerfile: ./docker/php.Dockerfile
+        container_name: sismobilidade_php
+        volumes:
+            - ./src:/var/www/html:cached
+        environment:
+            # Adicione variáveis de ambiente necessárias, por exemplo:
+            - DB_HOST=mssql
+            - DB_DATABASE=laraveldb
+            - DB_USERNAME=sa
+            - DB_PASSWORD=YourStrong!Passw0rd
+
+    mysql:
+        image: mysql:8.0.27
+        platform: linux/amd64
+        container_name: sismobilidade_mysql
+        ports:
+            - 3306:3306
+        volumes:
+            - ./mysql:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: laraveldb
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: secret
+
+    mssql:
+        image: mcr.microsoft.com/mssql/server:2017-latest
+        container_name: sismobilidade_mssql
+        restart: always
+        ports:
+            - 1433:1433
+        environment:
+            MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+            ACCEPT_EULA: "Y"
+        volumes:
+            - ./mssql_data:/var/opt/mssql
+            - ./sqlserver_init:/docker-entrypoint-initdb.d
+
+    composer:
+        image: composer:2.2
+        container_name: sismobilidade_composer
+        volumes:
+            - ./src:/var/www/html:cached
+        working_dir: /var/www/html
+        entrypoint: ['composer']
+
+    artisan:
+        build:
+            context: .
+            dockerfile: ./docker/php.Dockerfile
+        container_name: sismobilidade_artisan
+        volumes:
+            - ./src:/var/www/html:cached
+        working_dir: /var/www/html
+        entrypoint: ['php', 'artisan']
+
+    npm:
+        image: node:current-alpine
+        container_name: sismobilidade_npm
+        volumes:
+            - ./src:/var/www/html:cached
+        working_dir: /var/www/html
+        entrypoint: ['npm']
